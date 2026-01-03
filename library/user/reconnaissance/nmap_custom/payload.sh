@@ -65,7 +65,7 @@ elif [ "$target_mode" -eq 2 ]; then
     PROMPT "Available subnets:\n\n$net_menu"
     net_id=$(NUMBER_PICKER "Subnet number" "1")
     target=${net_arr[$net_id-1]}
-
+fi
 
 mkdir -p $LOOTDIR
 ts=$(date +%Y%m%d_%H%M%S)
