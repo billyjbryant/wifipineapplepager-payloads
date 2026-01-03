@@ -73,13 +73,13 @@ outfile=$LOOTDIR/$ts
 
 # log info
 LOG "scan   : $scan_name"
-LOG "args   : $scan_flags"
+LOG "flags   : $scan_flags"
 LOG "target : $target"
 LOG "output : $outfile"
 LOG "starting nmap...\n"
 
 # Run scan
-nmap $scan_args -oA $outfile $target \
+nmap $scan_flags -oA $outfile $target \
 | tr '\n' '\0' \
 | xargs -0 -n 1 LOG
 
