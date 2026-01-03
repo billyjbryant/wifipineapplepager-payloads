@@ -2,7 +2,7 @@
 # Title: Client WiFi Picker
 # Author: TheDadNerd
 # Description: Switches client mode WiFi between a selection of saved networks
-# Version: 1.0
+# Version: 1.1
 # Category: general
 
 # =============================================================================
