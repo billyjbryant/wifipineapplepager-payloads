@@ -43,4 +43,5 @@
 * **Feedback:** Visual OLED text, RGB LED pulses, and audible `alert` chimes.
 * **Passive Handshake:** Uses `SIGINT` and process-tracking for `hcitool` and `tcpdump`. This prevents "Device Busy" errors by allowing the radio firmware to cycle gracefully between Bluetooth and WiFi Monitor modes.
 * **Persistence:** Target lists are synced to the Pineapple's internal config database (`PAYLOAD_SET_CONFIG`) automatically after every addition.
+.
 
