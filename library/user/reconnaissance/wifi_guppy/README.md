@@ -7,7 +7,7 @@
     Author: JustSomeTrout (Trout / troot.)
     Developed for Firmware version 1.0.4
     Category: Reconnaissance
-    Passive Wi-Fi channel congestion visualizer.
+    Wi-Fi channel congestion visualizer.
     Focuses on RF channel load, not individual networks.
     *No 🐟 were harmed while surveying the RF reef*
 
@@ -48,7 +48,7 @@ The result is fast RF situational awareness without digging through raw scan dat
 ## How It Works
 
 1. Creates a temporary managed interface on phy1 (tri-band radio)
-2. Scans all bands using `iwinfo`
+2. Performs an active scan using `iwinfo` (sends probe requests)
 3. Parses band and channel information from scan results
 4. Groups channels by frequency band (2.4 GHz, 5 GHz, 6 GHz)
 5. Counts access points per channel
@@ -56,6 +56,8 @@ The result is fast RF situational awareness without digging through raw scan dat
 7. Cleans up temporary interface on exit
 
 The payload automatically handles interface creation and cleanup.
+
+**Note:** This uses active scanning which transmits probe requests. It is not a passive/listen-only tool.
 
 <p align="center">
 <img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
