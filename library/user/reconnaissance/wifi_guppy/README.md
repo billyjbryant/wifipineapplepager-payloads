@@ -1,6 +1,6 @@
 <h2 align="center">WiFi_Guppy</h2>
 <p align="center">
-<img alt="WiFi Guppy Logo" src="https://github.com/user-attachments/assets/6332cd0b-1837-4caa-bc3e-f1bb1c05a902" />
+<img alt="WiFi Guppy Logo" src="https://github.com/user-attachments/assets/9b82170d-665f-49b0-9bb1-e465694b9e7d" />
 </p>
 
     Payload name: WiFi Guppy
