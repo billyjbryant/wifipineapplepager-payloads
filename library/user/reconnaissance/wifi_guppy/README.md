@@ -1,6 +1,6 @@
 <h2 align="center">WiFi_Guppy</h2>
 <p align="center">
-<img alt="WiFi Guppy Logo" src="https://github.com/user-attachments/assets/PLACEHOLDER-GUPPY-IMAGE" />
+<img alt="WiFi Guppy Logo" src="https://github.com/user-attachments/assets/6332cd0b-1837-4caa-bc3e-f1bb1c05a902" />
 </p>
 
     Payload name: WiFi Guppy
@@ -8,7 +8,7 @@
     Developed for Firmware version 1.0.4
     Category: Reconnaissance
     Wi-Fi channel congestion visualizer.
-    Focuses on RF channel load, not individual networks.
+    Focuses on Wi-Fi channel load, not individual networks.
     *No 🐟 were harmed while surveying the RF reef*
 
 <p align="center">
@@ -24,7 +24,7 @@ provides a clear, visual snapshot of how busy each Wi-Fi channel is.
 
 > *Which channels are crowded — and which ones are calm?*
 
-The result is fast RF situational awareness without digging through raw scan data.
+The result is fast Wi-Fi situational awareness without digging through raw scan data.
 
 <p align="center">
 <img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
@@ -34,7 +34,7 @@ The result is fast RF situational awareness without digging through raw scan dat
 
 - **Tri-band scanning**: 2.4 GHz, 5 GHz, and 6 GHz
 - Aggregates access point presence per channel
-- **Grouped by band** for clear RF situational awareness
+- **Grouped by band** for clear Wi-Fi situational awareness
 - Visual bar-graph representation of channel congestion
 - Color-coded output for quick interpretation:
     - 🟢 Low congestion (1-3 APs)
