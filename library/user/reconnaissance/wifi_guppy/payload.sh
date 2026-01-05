@@ -121,5 +121,5 @@ show_band "5 GHz" "$CHANNEL_FILE_5G"
 show_band "6 GHz" "$CHANNEL_FILE_6G"
 
 LOG ""
-LOG "cyan" "*WiFi Guppy swims away."
+LOG "cyan" "*WiFi Guppy swims away*"
 LOG ""
