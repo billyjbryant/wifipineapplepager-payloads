@@ -8,7 +8,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/Platform-WiFi%20Pineapple%20Pager-00d4aa?style=flat-square" />
-<img src="https://img.shields.io/badge/Version-1.2.0-blue?style=flat-square" />
+<img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" />
 <img src="https://img.shields.io/badge/Author-JustSomeTrout-purple?style=flat-square" />
 </p>
 
@@ -16,9 +16,10 @@
     Title: Nautilus
     Author: JustSomeTrout (Trout / troot.)
     Developed for Firmware version 1.0.4
-    Category: General / Utility
-    Web-based payload launcher and console.
+    Category: Remote Access / Utility
+    Web-based payload launcher with GitHub integration.
     Control your Pager from any device on the network.
+    Run payloads directly from GitHub - no installation required!
     *Humans were harmed in the making of this payload*
 ```
 
@@ -34,11 +35,20 @@
 
 **Nautilus** transforms your WiFi Pineapple Pager into a web-accessible payload command center. Launch, monitor, and interact with payloads from your phone, laptop, tablet, or any device with a browser.
 
+### 🚀 NEW in v1.3: GitHub Integration
+
+**Run payloads directly from GitHub without installing them!** Nautilus now connects to the official [wifipineapplepager-payloads](https://github.com/hak5/wifipineapplepager-payloads) repository, letting you:
+
+- **Browse Merged Payloads**: Access the entire official payload library instantly
+- **Test Pull Requests**: Run payloads from open PRs before they're merged
+- **Zero Installation**: Payloads download to temp storage, execute, and clean up automatically
+- **Stay Current**: Always run the latest version without manual updates
+
 **Nautilus answers the question:**
 
-> *Why go through pages on pages to find your payload?*
+> *Why install payloads when you can just run them?*
 
-No more fumbling with D-pad navigation. Just point, click, and watch the magic happen in real-time.
+No more fumbling with D-pad navigation or manual file transfers. Just point, click, and watch the magic happen in real-time.
 
 <p align="center">
 <img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
@@ -54,6 +64,23 @@ No more fumbling with D-pad navigation. Just point, click, and watch the magic h
 - **Live Console**: Watch output stream in real-time with color support
 - **Stop Control**: Abort running payloads at any time
 
+### 🌐 GitHub Integration (NEW in v1.3)
+
+Nautilus now has three payload sources accessible via tabs:
+
+| Tab | Source | Description |
+|-----|--------|-------------|
+| **Local** | Your Pager | Payloads installed in `/root/payloads/user/` |
+| **Merged** | GitHub Main | Official payloads from the hak5 repository |
+| **PRs** | GitHub PRs | Open pull requests - test before they're merged! |
+
+**Key Benefits:**
+- **No Installation Required**: Run any payload from GitHub without copying files
+- **Always Up-to-Date**: Merged tab shows the latest official payloads
+- **Test New Payloads**: PRs tab lets you try community contributions before they're approved
+- **Automatic Cleanup**: Downloaded payloads are removed after execution
+- **Cached for Speed**: GitHub payload list is cached locally for fast browsing
+
 ### Interactive Prompts
 Nautilus intercepts and displays DuckyScript prompts in the web UI:
 
@@ -68,7 +95,10 @@ Nautilus intercepts and displays DuckyScript prompts in the web UI:
 
 Your response is sent back to the payload — no pager interaction required!
 
-### Security (v1.2.0)
+### Spinner Overlay
+Payloads using `START_SPINNER` or `SPINNER` commands display a visual loading overlay in the web UI with a kill button to abort if needed.
+
+### Security
 
 Nautilus includes multiple layers of protection against web-based attacks:
 
@@ -112,9 +142,11 @@ Nautilus includes multiple layers of protection against web-based attacks:
 │  Your Device (Phone/Laptop/etc)                             │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  Browser → http://172.16.42.1:8888                    │  │
-│  │  ├── Sidebar: Browse payloads                         │  │
-│  │  ├── Console: Live SSE stream                         │  │
-│  │  └── Modals: Interactive prompts                      │  │
+│  │  ├── Tabs: Local | Merged | PRs                       │  │
+│  │  ├── Sidebar: Browse payloads by category             │  │
+│  │  ├── Console: Live SSE stream with colors             │  │
+│  │  ├── Modals: Interactive prompts                      │  │
+│  │  └── Spinner: Loading overlay with kill button        │  │
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -125,19 +157,29 @@ Nautilus includes multiple layers of protection against web-based attacks:
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  uhttpd (port 8888)                                   │  │
 │  │  └── /cgi-bin/api.sh                                  │  │
-│  │      ├── list    → JSON payload catalog               │  │
-│  │      ├── run     → Launch wrapper + SSE stream        │  │
-│  │      ├── stop    → Kill running payload               │  │
-│  │      ├── respond → Send prompt response               │  │
-│  │      └── refresh → Rebuild payload cache              │  │
+│  │      ├── list       → JSON payload catalog (local)    │  │
+│  │      ├── run        → Launch local payload + SSE      │  │
+│  │      ├── run_github → Download & run GitHub payload   │  │
+│  │      ├── stop       → Kill running payload + cleanup  │  │
+│  │      ├── respond    → Send prompt response            │  │
+│  │      └── refresh    → Rebuild payload cache           │  │
 │  └───────────────────────────────────────────────────────┘  │
+│                              │                              │
+│            ┌─────────────────┼─────────────────┐            │
+│            ▼                 ▼                 ▼            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │ Local        │  │ GitHub API   │  │ GitHub Raw       │   │
+│  │ /root/       │  │ Fetch tree   │  │ Download files   │   │
+│  │ payloads/    │  │ structure    │  │ to /tmp/         │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
 │                              │                              │
 │                              ▼                              │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  Wrapper Script (intercepts DuckyScript commands)     │  │
 │  │  ├── LOG()              → Echo + real command         │  │
 │  │  ├── LED()              → Echo + real command         │  │
-│  │  ├── ALERT()            → Echo + real command         │  │
+│  │  ├── ALERT()            → Prompt via SSE (no pager)   │  │
+│  │  ├── SPINNER()          → Overlay in web UI           │  │
 │  │  ├── CONFIRMATION_DIALOG → Prompt via SSE             │  │
 │  │  ├── TEXT_PICKER        → Prompt via SSE              │  │
 │  │  ├── NUMBER_PICKER      → Prompt via SSE              │  │
@@ -152,6 +194,15 @@ Nautilus includes multiple layers of protection against web-based attacks:
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### GitHub Payload Flow
+
+When you run a payload from the **Merged** or **PRs** tab:
+
+1. **Fetch**: Nautilus downloads the payload folder from GitHub to `/tmp/`
+2. **Execute**: The payload runs with the same wrapper as local payloads
+3. **Stream**: Output streams to your browser in real-time
+4. **Cleanup**: Temporary files are removed after execution (or on stop)
 
 ### Nautilus Payload Wrapper
 
@@ -208,7 +259,7 @@ Instead of polling for updates, Nautilus uses SSE for efficient real-time stream
    /root/payloads/user/general/nautilus/
    ```
 
-2. The payload will appear in the Pager's menu under **General**.
+2. The payload will appear in the Pager's menu under **Remote Access**.
 
 ### File Structure
 
@@ -218,9 +269,10 @@ nautilus/
 ├── build_cache.sh      # Scans payloads, generates JSON catalog
 ├── README.md           # You are here
 └── www/
-    ├── index.html      # Single-file web UI (~15KB)
+    ├── index.html      # Single-file web UI (~50KB)
+    ├── nautilus_logo.png
     └── cgi-bin/
-        └── api.sh      # CGI backend (list, run, stop, respond)
+        └── api.sh      # CGI backend (~30KB, handles everything)
 ```
 
 <p align="center">
@@ -231,7 +283,7 @@ nautilus/
 
 ### Starting Nautilus
 
-1. Navigate to **General → Nautilus** on your Pager
+1. Navigate to **Remote Access → Nautilus** on your Pager
 2. Press **A** to run
 3. The display shows the server URL:
    ```
@@ -245,17 +297,34 @@ nautilus/
 ### Using the Web Interface
 
 1. **Login**: Enter the root password (same as SSH/serial access)
-2. **Browse**: Payloads are organized by category in the left sidebar
-2. **Search**: Type to filter payloads instantly
-3. **Select**: Click a payload to see details
-4. **Run**: Click the green **Run Payload** button
-5. **Watch**: Output streams to the console in real-time
-6. **Interact**: Prompts appear as modal dialogs — respond and continue
-7. **Stop**: Click **Stop** to abort a running payload
+2. **Choose Source**: Select a tab:
+   - **Local**: Payloads installed on your Pager
+   - **Merged**: Official payloads from GitHub (no installation needed!)
+   - **PRs**: Open pull requests to test new community payloads
+3. **Browse**: Payloads are organized by category in the left sidebar
+4. **Search**: Type to filter payloads instantly
+5. **Select**: Click a payload to see details
+6. **Run**: Click the green **Run Payload** button
+7. **Watch**: Output streams to the console in real-time
+8. **Interact**: Prompts appear as modal dialogs — respond and continue
+9. **Stop**: Click **Stop** or the X on the spinner to abort
+
+### Running GitHub Payloads
+
+When you run a payload from **Merged** or **PRs**:
+- The payload downloads automatically to temporary storage
+- Execution begins immediately with live console output
+- All temp files are cleaned up after the payload finishes
+- No files are permanently installed on your Pager
+
+This is perfect for:
+- **Testing new payloads** before deciding to install them
+- **Running one-off utilities** you don't need permanently
+- **Trying PR contributions** before they're merged
 
 ### Stopping Nautilus
 
-- Press **B** on the Pager, OR
+- Press **B** on the Pager.
 
 <p align="center">
 <img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
@@ -269,11 +338,20 @@ nautilus/
 |---------|----------|
 | `LOG "message"` | Displays in console |
 | `LOG green "message"` | Displays with color |
-| `LED SETUP` | Shows LED status |
-| `ALERT "message"` | Shows as yellow alert |
-| `ERROR_DIALOG "message"` | Shows as red error |
-| `SPINNER "message"` | Shows spinner status |
-| `SPINNER_STOP` | Shows spinner stopped |
+| `LED SETUP` | Shows LED status + executes on Pager |
+| `ALERT "message"` | Shows alert modal (web UI only) |
+| `ERROR_DIALOG "message"` | Shows error modal (web UI only) |
+
+### Spinner Commands (Visual Overlay)
+
+| Command | Behavior |
+|---------|----------|
+| `SPINNER "message"` | Shows spinning logo overlay with message |
+| `START_SPINNER "message"` | Same as SPINNER |
+| `SPINNER_STOP` | Hides the spinner overlay |
+| `STOP_SPINNER` | Same as SPINNER_STOP |
+
+The spinner overlay includes a kill button (X) to abort the payload if needed.
 
 ### Interactive Commands (Web Modals)
 
@@ -289,57 +367,6 @@ nautilus/
 ### Passthrough Commands
 
 These commands execute on the Pager AND show status in the console:
-- `LED` 
-- `ALERT`
+- `LED` - Controls the LED and logs to console
+- `LOG` - Logs to console and Pager display
 - Real system commands work normally
-
-<p align="center">
-<img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
-</p>
-
-## Technical Details
-
-### Stack
-- **Web Server**: uhttpd (built into OpenWrt)
-- **Backend**: Pure shell script CGI
-- **Frontend**: Vanilla HTML/CSS/JS (no frameworks, no dependencies)
-- **Streaming**: Server-Sent Events (SSE)
-- **Port**: 8888
-
-### Performance
-- **Startup**: ~2 seconds to build payload cache
-- **Cache**: JSON catalog stored in `/tmp` for instant listing
-- **Streaming**: 200ms polling interval for smooth output
-- **Size**: ~15KB total (HTML + CSS + JS inlined)
-
-### Security Considerations
-- Only accessible from the local network
-- Path validation prevents directory traversal
-- Payload paths must start with `/root/payloads/`
-
-<p align="center">
-<img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
-</p>
-
-## Troubleshooting
-
-### "Cache not ready" error
-The payload cache is building. Wait 2 seconds and refresh, or click the refresh button.
-
-### Payloads not appearing
-Click the **↻** refresh button in the header to rebuild the cache.
-
-### Prompts not showing
-Make sure you're using the standard DuckyScript prompt commands. Check the console for `[PROMPT:...]` markers.
-
-### Console stops updating
-The SSE connection may have timed out. Refresh the page and run again.
-
-### Can't connect to server
-1. Make sure Nautilus is running (check Pager display)
-2. Verify you're on the same network as the Pager
-3. Try the IP: `http://172.16.42.1:8888`
-
-<p align="center">
-<img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
-</p>

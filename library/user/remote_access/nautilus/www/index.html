@@ -98,10 +98,41 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .login-box .btn{width:100%;justify-content:center}
 .login-error{color:var(--danger);font-size:0.85em;margin-bottom:12px;display:none}
 .login-error.show{display:block}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface2)}
+.tab{flex:1;padding:10px 8px;text-align:center;font-size:0.75em;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px}
+.tab:hover{color:var(--text);background:rgba(255,255,255,0.03)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(0,212,170,0.05)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.github-loading{padding:40px 20px;text-align:center;color:var(--text2)}
+.github-loading .spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pr-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:all 0.15s}
+.pr-item:hover{background:var(--surface2)}
+.pr-item .pr-title{font-size:0.85em;font-weight:500;color:var(--text);margin-bottom:4px}
+.pr-item .pr-meta{font-size:0.75em;color:var(--text2)}
+.pr-item .pr-number{color:var(--accent);font-weight:600}
+.search-row{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.search-row input{flex:1;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.9em;transition:all 0.2s}
+.search-row input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
+.search-row input::placeholder{color:var(--text2)}
+.refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:0.85em;transition:all 0.2s;display:flex;align-items:center;gap:4px}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+.refresh-btn.loading{pointer-events:none;opacity:0.6}
+.refresh-btn svg{width:14px;height:14px;fill:currentColor}
+.cache-info{font-size:0.7em;color:var(--text2);padding:4px 16px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.spinner-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(4px)}
+.spinner-overlay.show{display:flex}
+.spinner-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 48px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.4);position:relative;min-width:200px}
+.spinner-box img{width:64px;height:64px;animation:spin 2s linear infinite;margin-bottom:16px}
+.spinner-box .spinner-text{color:var(--text);font-size:1em;font-weight:500}
+.spinner-kill{position:absolute;top:8px;right:8px;width:24px;height:24px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s}
+.spinner-kill:hover{background:#e74c3c;border-color:#e74c3c;color:#fff}
+.spinner-kill svg{width:14px;height:14px;fill:currentColor}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<!-- Login Overlay -->
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
 <img src="nautilus_logo.png" alt="Nautilus" onerror="this.style.display='none'">
@@ -123,8 +154,35 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 </div>
 <div class="container">
 <div class="sidebar">
+<div class="tabs">
+<div class="tab active" data-tab="local" onclick="switchTab('local')">Local</div>
+<div class="tab" data-tab="merged" onclick="switchTab('merged')">Merged</div>
+<div class="tab" data-tab="prs" onclick="switchTab('prs')">PRs</div>
+</div>
+<div class="tab-content active" id="tab-local">
 <div class="search"><input type="text" id="searchBox" placeholder="Search payloads..." oninput="filter(this.value)"></div>
 <div id="categories"></div>
+</div>
+<div class="tab-content" id="tab-merged">
+<div class="search-row">
+<input type="text" id="searchBoxMerged" placeholder="Search GitHub payloads..." oninput="filterMerged(this.value)">
+<button class="refresh-btn" id="refreshMerged" onclick="refreshGithubPayloads()" title="Refresh from GitHub"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>
+</div>
+<div class="cache-info" id="mergedCacheInfo"></div>
+<div id="githubCategories">
+<div class="github-loading"><div class="spinner"></div>Loading from GitHub...</div>
+</div>
+</div>
+<div class="tab-content" id="tab-prs">
+<div class="search-row">
+<input type="text" id="searchBoxPRs" placeholder="Search pull requests..." oninput="filterPRs(this.value)">
+<button class="refresh-btn" id="refreshPRs" onclick="refreshGithubPRs()" title="Refresh from GitHub"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>
+</div>
+<div class="cache-info" id="prsCacheInfo"></div>
+<div id="prList">
+<div class="github-loading"><div class="spinner"></div>Loading pull requests...</div>
+</div>
+</div>
 </div>
 <div class="main">
 <div class="main-left">
@@ -144,7 +202,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 </div>
 </div>
 </div>
-<!-- Prompt Modal -->
 <div class="modal-overlay" id="modalOverlay">
 <div class="modal">
 <div class="modal-title" id="modalTitle">Confirm</div>
@@ -156,11 +213,501 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 </div>
 </div>
 </div>
+<div class="spinner-overlay" id="spinnerOverlay">
+<div class="spinner-box">
+<button class="spinner-kill" onclick="stop()" title="Stop payload"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+<img src="nautilus_logo.png" alt="Loading">
+<div class="spinner-text" id="spinnerText">Loading...</div>
+</div>
+</div>
 <script>
 let payloads={},filtered={},selected=null,running=false,evtSource=null,lineCount=0;
+let activeSpinners={};
+let currentTab='local';
+let runningSection=null;
+let githubPayloads={},filteredGithub={},githubPRs=[],filteredPRs=[];
 const $=id=>document.getElementById(id);
 
-// SHA-256 for challenge-response auth
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('active',c.id==='tab-'+tab));
+  selected=null;
+  renderDetail();
+  if(tab==='merged'&&Object.keys(githubPayloads).length===0)loadGithubPayloads();
+  if(tab==='prs'&&githubPRs.length===0)loadGithubPRs();
+}
+
+function filterMerged(q){
+  q=q.toLowerCase();
+  if(!q){filteredGithub=githubPayloads;}
+  else{
+    filteredGithub={};
+    for(const[cat,list]of Object.entries(githubPayloads)){
+      const m=list.filter(p=>(p.title+p.description+p.author).toLowerCase().includes(q));
+      if(m.length)filteredGithub[cat]=m;
+    }
+  }
+  renderGithub();
+}
+
+function filterPRs(q){
+  q=q.toLowerCase();
+  if(!q){filteredPRs=githubPRs;}
+  else{filteredPRs=githubPRs.filter(pr=>(pr.title+pr.user+'#'+pr.number).toLowerCase().includes(q));}
+  renderPRs();
+}
+
+const GITHUB_REPO='hak5/wifipineapplepager-payloads';
+const GITHUB_BRANCH='master';
+const GITHUB_API='https://api.github.com';
+const GITHUB_RAW='https://raw.githubusercontent.com';
+const CACHE_KEY_MERGED='nautilus_github_merged';
+const CACHE_KEY_PRS='nautilus_github_prs';
+const CACHE_KEY_PR_FILES='nautilus_pr_files';
+
+function updateCacheInfo(id,timestamp){
+  const el=$(id);
+  if(!el)return;
+  if(!timestamp){el.textContent='';el.style.display='none';return;}
+  const d=new Date(timestamp);
+  el.textContent='Cached: '+d.toLocaleString();
+  el.style.display='block';
+}
+
+async function loadGithubPayloads(forceRefresh=false){
+  $('githubCategories').innerHTML='<div class="github-loading"><div class="spinner"></div>Loading from GitHub...</div>';
+  $('refreshMerged').classList.add('loading');
+    
+  if(!forceRefresh){
+    try{
+      const cached=localStorage.getItem(CACHE_KEY_MERGED);
+      if(cached){
+        const data=JSON.parse(cached);
+        githubPayloads=data.payloads;
+        filteredGithub=githubPayloads;
+        updateCacheInfo('mergedCacheInfo',data.timestamp);
+        renderGithub();
+        $('refreshMerged').classList.remove('loading');
+        return;
+      }
+    }catch(e){console.error('Cache read error:',e);}
+  }
+
+  try{
+    const treeResp=await fetch(`${GITHUB_API}/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`);
+    if(!treeResp.ok)throw new Error('GitHub API error: '+treeResp.status);
+    const treeData=await treeResp.json();
+
+    const payloadPaths=treeData.tree
+      .filter(f=>f.type==='blob'&&f.path.match(/^library\/user\/[^/]+\/[^/]+\/payload\.sh$/))
+      .map(f=>f.path);
+
+    githubPayloads={};
+    for(const p of payloadPaths){
+      const parts=p.split('/');
+      const cat=parts[2];
+      const name=parts[3];
+      if(!githubPayloads[cat])githubPayloads[cat]=[];
+
+      try{
+        const shResp=await fetch(`${GITHUB_RAW}/${GITHUB_REPO}/${GITHUB_BRANCH}/${p}`);
+        if(!shResp.ok){
+          githubPayloads[cat].push({name,title:name,description:'',author:'',version:'',path:p.replace('/payload.sh',''),rawUrl:`${GITHUB_RAW}/${GITHUB_REPO}/${GITHUB_BRANCH}/${p}`});
+          continue;
+        }
+        const shContent=await shResp.text();
+        const meta=parsePayloadMeta(shContent);
+        githubPayloads[cat].push({
+          name,
+          title:meta.title||name,
+          description:meta.description||'',
+          author:meta.author||'',
+          version:meta.version||'',
+          path:p.replace('/payload.sh',''),
+          rawUrl:`${GITHUB_RAW}/${GITHUB_REPO}/${GITHUB_BRANCH}/${p}`
+        });
+      }catch(e){
+        githubPayloads[cat].push({name,title:name,description:'',author:'',version:'',path:p.replace('/payload.sh',''),rawUrl:`${GITHUB_RAW}/${GITHUB_REPO}/${GITHUB_BRANCH}/${p}`});
+      }
+    }
+
+    for(const cat in githubPayloads){
+      if(githubPayloads[cat].length===0)delete githubPayloads[cat];
+    }
+
+    const cacheData={payloads:githubPayloads,timestamp:Date.now()};
+    localStorage.setItem(CACHE_KEY_MERGED,JSON.stringify(cacheData));
+    updateCacheInfo('mergedCacheInfo',cacheData.timestamp);
+
+    filteredGithub=githubPayloads;
+    renderGithub();
+  }catch(e){
+    console.error('GitHub fetch error:',e);
+    $('githubCategories').innerHTML='<div class="empty"><h3>Error</h3><p>'+escHtml(e.message)+'</p><p style="font-size:0.8em;margin-top:8px">GitHub API rate limit: 60 requests/hour</p></div>';
+  }
+  $('refreshMerged').classList.remove('loading');
+}
+
+function parsePayloadMeta(content){
+  const meta={};
+  const lines=content.split('\n').slice(0,15);
+  for(const line of lines){
+    const m=line.match(/^#\s*(Title|Description|Author|Version):\s*(.+)/i);
+    if(m)meta[m[1].toLowerCase()]=m[2].trim();
+  }
+  return meta;
+}
+
+function refreshGithubPayloads(){
+  localStorage.removeItem(CACHE_KEY_MERGED);
+  updateCacheInfo('mergedCacheInfo',null);
+  loadGithubPayloads(true);
+}
+
+async function loadGithubPRs(forceRefresh=false){
+  $('prList').innerHTML='<div class="github-loading"><div class="spinner"></div>Loading pull requests...</div>';
+  $('refreshPRs').classList.add('loading');
+
+  if(!forceRefresh){
+    try{
+      const cached=localStorage.getItem(CACHE_KEY_PRS);
+      if(cached){
+        const data=JSON.parse(cached);
+        githubPRs=data.prs;
+        filteredPRs=githubPRs;
+        updateCacheInfo('prsCacheInfo',data.timestamp);
+        renderPRs();
+        $('refreshPRs').classList.remove('loading');
+        return;
+      }
+    }catch(e){console.error('Cache read error:',e);}
+  }
+
+  try{
+    const resp=await fetch(`${GITHUB_API}/repos/${GITHUB_REPO}/pulls?state=open&per_page=50`);
+    if(!resp.ok)throw new Error('GitHub API error: '+resp.status);
+    const prs=await resp.json();
+
+    githubPRs=prs.map(pr=>({
+      number:pr.number,
+      title:pr.title,
+      user:pr.user.login,
+      avatar:pr.user.avatar_url,
+      url:pr.html_url,
+      created:pr.created_at,
+      branch:pr.head.ref,
+      sha:pr.head.sha,
+      forkRepo:pr.head.repo?pr.head.repo.full_name:GITHUB_REPO
+    }));
+
+    const cacheData={prs:githubPRs,timestamp:Date.now()};
+    localStorage.setItem(CACHE_KEY_PRS,JSON.stringify(cacheData));
+    updateCacheInfo('prsCacheInfo',cacheData.timestamp);
+
+    filteredPRs=githubPRs;
+    renderPRs();
+  }catch(e){
+    console.error('GitHub PR fetch error:',e);
+    $('prList').innerHTML='<div class="empty"><h3>Error</h3><p>'+escHtml(e.message)+'</p></div>';
+  }
+  $('refreshPRs').classList.remove('loading');
+}
+
+function refreshGithubPRs(){
+  localStorage.removeItem(CACHE_KEY_PRS);
+  localStorage.removeItem(CACHE_KEY_PR_FILES);
+  updateCacheInfo('prsCacheInfo',null);
+  loadGithubPRs(true);
+}
+
+function renderGithub(){
+  if(Object.keys(filteredGithub).length===0){
+    $('githubCategories').innerHTML='<div class="empty"><h3>No Payloads</h3><p>No GitHub payloads found</p></div>';
+    return;
+  }
+  let html='';
+  for(const[cat,list]of Object.entries(filteredGithub).sort((a,b)=>a[0].localeCompare(b[0]))){
+    html+='<div class="category"><div class="cat-header" onclick="toggle(this)"><span>'+escHtml(cat)+'</span><span style="display:flex;align-items:center;gap:8px"><span class="count">'+list.length+'</span><span class="arrow">▶</span></span></div><div class="payloads">';
+    for(const p of list){
+      html+='<div class="payload" data-github-path="'+escHtml(p.path)+'" onclick="selectGithubPayload(\''+escHtml(p.path)+'\')"><div class="name">'+escHtml(p.title)+'</div><div class="desc">'+escHtml(p.description||'No description')+'</div></div>';
+    }
+    html+='</div></div>';
+  }
+  $('githubCategories').innerHTML=html;
+}
+
+function renderPRs(){
+  if(filteredPRs.length===0){
+    $('prList').innerHTML='<div class="empty"><h3>No Pull Requests</h3><p>No open PRs found</p></div>';
+    return;
+  }
+  let html='';
+  for(const pr of filteredPRs){
+    const date=new Date(pr.created).toLocaleDateString();
+    html+='<div class="pr-item" onclick="selectPR('+pr.number+')"><div class="pr-title"><span class="pr-number">#'+pr.number+'</span> '+escHtml(pr.title)+'</div><div class="pr-meta">by '+escHtml(pr.user)+' • '+date+'</div></div>';
+  }
+  $('prList').innerHTML=html;
+}
+
+function selectGithubPayload(path){
+  if(running&&runningSection!=='merged')stop();
+  document.querySelectorAll('.payload').forEach(p=>p.classList.remove('active'));
+  const el=document.querySelector('.payload[data-github-path="'+path+'"]');
+  if(el)el.classList.add('active');
+  for(const cat in githubPayloads){
+    const found=githubPayloads[cat].find(p=>p.path===path);
+    if(found){
+      selected={...found,isGithub:true};
+      const authorHtml=found.author?'<span><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'+escHtml(found.author)+'</span>':'';
+      const versionHtml=found.version?'<span><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>v'+escHtml(found.version)+'</span>':'';
+      $('detail').innerHTML='<h2>'+escHtml(found.title)+'</h2><div class="meta">'+authorHtml+versionHtml+'<span><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>GitHub</span></div><div class="description">'+escHtml(found.description||'No description')+'</div><div class="actions"><button class="btn" id="runBtn" onclick="runGithub()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run from GitHub</button></div>';
+      updateRunBtn();
+      break;
+    }
+  }
+}
+
+function selectPR(number){
+  if(running&&runningSection!=='pr')stop();
+  const pr=githubPRs.find(p=>p.number===number);
+  if(!pr)return;
+  selected={...pr,isPR:true};
+  $('detail').innerHTML='<h2><span style="color:var(--accent)">#'+pr.number+'</span> '+escHtml(pr.title)+'</h2><div class="meta"><span><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'+escHtml(pr.user)+'</span><span><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'+escHtml(pr.branch)+'</span></div><div class="description">Pull Request from '+escHtml(pr.user)+'</div><div class="actions"><a href="'+escHtml(pr.url)+'" target="_blank" class="btn secondary">View on GitHub</a><button class="btn" onclick="loadPRPayloads('+pr.number+')">Load Payloads</button></div>';
+}
+
+function getPRFilesCache(){
+  try{return JSON.parse(localStorage.getItem(CACHE_KEY_PR_FILES)||'{}');}
+  catch(e){return {};}
+}
+
+function setPRFilesCache(number,files){
+  const cache=getPRFilesCache();
+  cache[number]={files,timestamp:Date.now()};
+  localStorage.setItem(CACHE_KEY_PR_FILES,JSON.stringify(cache));
+}
+
+async function loadPRPayloads(number){
+  const pr=githubPRs.find(p=>p.number===number);
+  if(!pr)return;
+  $('console').innerHTML='';
+  lineCount=0;
+  $('lineCount').textContent='0 lines';
+  $('detail').innerHTML+='<div class="github-loading" style="margin-top:16px"><div class="spinner"></div>Loading PR files...</div>';
+
+  let payloadFiles=[];
+  const cache=getPRFilesCache();
+
+  if(cache[number]){
+    payloadFiles=cache[number].files;
+  }else{
+    try{
+      const resp=await fetch(`${GITHUB_API}/repos/${GITHUB_REPO}/pulls/${number}/files`);
+      if(!resp.ok)throw new Error('API error');
+      const files=await resp.json();
+      payloadFiles=files.filter(f=>f.filename.endsWith('payload.sh')).map(f=>({filename:f.filename,sha:f.sha}));
+      setPRFilesCache(number,payloadFiles);
+    }catch(e){
+      $('detail').querySelector('.github-loading')?.remove();
+      $('detail').innerHTML+='<p style="color:var(--danger);margin-top:12px">Error loading PR files</p>';
+      return;
+    }
+  }
+
+  $('detail').querySelector('.github-loading')?.remove();
+
+  if(payloadFiles.length===0){
+    $('console').innerHTML='';
+    lineCount=0;
+    const line=document.createElement('div');
+    line.className='line yellow';
+    line.textContent='[GitHub] No payload.sh files found in this PR';
+    $('console').appendChild(line);
+    lineCount++;
+    const line2=document.createElement('div');
+    line2.className='line';
+    line2.textContent='PRs must follow the structure: library/user/category/name/payload.sh';
+    $('console').appendChild(line2);
+    lineCount++;
+    $('lineCount').textContent=lineCount+' lines';
+    return;
+  }
+  const forkRepo=pr.forkRepo||GITHUB_REPO;
+  let html='<div style="margin-top:16px"><h3 style="font-size:0.9em;color:var(--text2);margin-bottom:8px">Payloads in this PR:</h3>';
+  for(const f of payloadFiles){
+    const name=f.filename.split('/').slice(-2,-1)[0]||f.filename;
+    html+='<div class="payload pr-payload" data-pr-sha="'+escHtml(pr.sha)+'" data-pr-file="'+escHtml(f.filename)+'" style="margin:4px 0" onclick="selectPRPayload(this,\''+escHtml(pr.sha)+'\',\''+escHtml(f.filename)+'\',\''+escHtml(name)+'\',\''+escHtml(forkRepo)+'\')"><div class="name">'+escHtml(name)+'</div><div class="desc">'+escHtml(f.filename)+'</div></div>';
+  }
+  html+='</div><div id="prPayloadActions" style="display:none;margin-top:12px"><button class="btn" id="runBtn" onclick="runSelectedPRPayload()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run Payload</button></div>';
+  $('detail').innerHTML+=html;
+  updateRunBtn();
+}
+
+async function runGithub(){
+  if(!selected||!selected.isGithub)return;
+  if(running){stop();return;}
+  running=true;runningSection='merged';lineCount=0;
+  updateRunBtn();
+  $('console').innerHTML='';
+  $('lineCount').textContent='0 lines';
+  $('status').textContent='Running GitHub payload...';
+  $('status').classList.add('running');
+
+  let token='';
+  try{
+    const tokenResp=await fetch('/cgi-bin/api.sh?action=token');
+    const tokenData=await tokenResp.json();
+    if(tokenData.code==='AUTH_REQUIRED'){
+      running=false;runningSection=null;updateRunBtn();
+      $('status').textContent='Session expired';$('status').classList.remove('running');
+      showLogin();return;
+    }
+    token=tokenData.token||'';
+  }catch(e){
+    console.error('Failed to get CSRF token:',e);
+    $('status').textContent='Security error: Could not get token';
+    running=false;
+    updateRunBtn();
+    return;
+  }
+
+  evtSource=new EventSource(`/cgi-bin/api.sh?action=run_github&github_url=${encodeURIComponent(selected.rawUrl)}&token=${encodeURIComponent(token)}`);
+  evtSource.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      const text=d.text.replace(/\\n/g,'\n').replace(/\\\\n/g,'\n');
+      const lines=text.split('\n');
+      lines.forEach(t=>{
+        if(t.trim()==='')return;
+        const line=document.createElement('div');
+        line.className='line '+(d.color||'');
+        line.textContent=t;
+        $('console').appendChild(line);
+        lineCount++;
+      });
+      $('lineCount').textContent=lineCount+' lines';
+      $('console').scrollTop=$('console').scrollHeight;
+    }catch(err){}
+  };
+  evtSource.addEventListener('prompt',e=>{
+    try{const d=JSON.parse(e.data);showPrompt(d.type,d.message,d.default||'');}catch(err){}
+  });
+  evtSource.addEventListener('spinner',e=>{
+    try{const d=JSON.parse(e.data);handleSpinner(d);}catch(err){}
+  });
+  evtSource.addEventListener('done',()=>{
+    evtSource.close();
+    running=false;
+    hideSpinner();
+    updateRunBtn();
+    $('status').textContent='Complete';
+    $('status').classList.remove('running');
+  });
+  evtSource.onerror=()=>{
+    evtSource.close();
+    running=false;
+    hideSpinner();
+    updateRunBtn();
+    $('status').textContent='Connection lost';
+    $('status').classList.remove('running');
+  };
+}
+
+let selectedPRPayload=null;
+
+function selectPRPayload(el,sha,filename,name,forkRepo){
+  document.querySelectorAll('.pr-payload').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  selectedPRPayload={sha,filename,name,forkRepo:forkRepo||GITHUB_REPO};
+  const actions=$('prPayloadActions');
+  if(actions)actions.style.display='block';
+  updateRunBtn();
+}
+
+function runSelectedPRPayload(){
+  if(!selectedPRPayload)return;
+  runPRPayload(selectedPRPayload.sha,selectedPRPayload.filename,selectedPRPayload.forkRepo);
+}
+
+async function runPRPayload(sha,filename,forkRepo){
+  if(running){stop();return;}
+  running=true;runningSection='pr';lineCount=0;
+  updateRunBtn();
+  $('console').innerHTML='';
+  $('lineCount').textContent='0 lines';
+  $('status').textContent='Running PR payload...';
+  $('status').classList.add('running');
+
+  const repo=forkRepo||GITHUB_REPO;
+  const rawUrl=`${GITHUB_RAW}/${repo}/${sha}/${filename}`;
+
+  let token='';
+  try{
+    const tokenResp=await fetch('/cgi-bin/api.sh?action=token');
+    const tokenData=await tokenResp.json();
+    if(tokenData.code==='AUTH_REQUIRED'){
+      running=false;runningSection=null;updateRunBtn();
+      $('status').textContent='Session expired';$('status').classList.remove('running');
+      showLogin();return;
+    }
+    token=tokenData.token||'';
+    if(!token){
+      console.error('Empty token received:',tokenData);
+      $('status').textContent='Security error: Empty token';
+      running=false;
+      updateRunBtn();
+      return;
+    }
+  }catch(e){
+    console.error('Failed to get CSRF token:',e);
+    $('status').textContent='Security error: Could not get token';
+    running=false;
+    updateRunBtn();
+    return;
+  }
+
+  evtSource=new EventSource(`/cgi-bin/api.sh?action=run_github&github_url=${encodeURIComponent(rawUrl)}&token=${encodeURIComponent(token)}`);
+  evtSource.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      const text=d.text.replace(/\\n/g,'\n').replace(/\\\\n/g,'\n');
+      const lines=text.split('\n');
+      lines.forEach(t=>{
+        if(t.trim()==='')return;
+        const line=document.createElement('div');
+        line.className='line '+(d.color||'');
+        line.textContent=t;
+        $('console').appendChild(line);
+        lineCount++;
+      });
+      $('lineCount').textContent=lineCount+' lines';
+      $('console').scrollTop=$('console').scrollHeight;
+    }catch(err){}
+  };
+  evtSource.addEventListener('prompt',e=>{
+    try{const d=JSON.parse(e.data);showPrompt(d.type,d.message,d.default||'');}catch(err){}
+  });
+  evtSource.addEventListener('spinner',e=>{
+    try{const d=JSON.parse(e.data);handleSpinner(d);}catch(err){}
+  });
+  evtSource.addEventListener('done',()=>{
+    evtSource.close();
+    running=false;
+    hideSpinner();
+    updateRunBtn();
+    $('status').textContent='Complete';
+    $('status').classList.remove('running');
+  });
+  evtSource.onerror=()=>{
+    evtSource.close();
+    running=false;
+    hideSpinner();
+    updateRunBtn();
+    $('status').textContent='Connection lost';
+    $('status').classList.remove('running');
+  };
+}
+
 function sha256(s){
   const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
   function rr(n,x){return(x>>>n)|(x<<(32-n));}
@@ -222,14 +769,20 @@ async function doLogin(){
   }catch(e){$('loginError').textContent='Auth error: '+e.message;$('loginError').classList.add('show');}
 }
 
+function showLogin(){
+  $('loginOverlay').classList.remove('hidden');
+  $('loginPassword').value='';
+  $('loginPassword').focus();
+  $('loginError').classList.remove('show');
+}
+
 async function initAuth(){
   if(await checkSession()){$('loginOverlay').classList.add('hidden');load();}
-  else{$('loginOverlay').classList.remove('hidden');$('loginPassword').focus();}
+  else{showLogin();}
 }
 
 async function load(){
   try{
-    // list action is safe (read-only), no CSRF header needed
     const r=await fetch('/cgi-bin/api.sh?action=list');
     if(!r.ok)throw new Error('HTTP '+r.status);
     const text=await r.text();
@@ -277,7 +830,14 @@ function filter(q){
 
 function toggle(el){el.classList.toggle('open');el.nextElementSibling.classList.toggle('open');}
 
+function renderDetail(){
+  if(!selected){
+    $('detail').innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg><h3>Select a Payload</h3><p>Choose from the sidebar</p></div>';
+  }
+}
+
 function selectByPath(path){
+  if(running&&runningSection!=='local')stop();
   document.querySelectorAll('.payload').forEach(p=>p.classList.remove('active'));
   const el=document.querySelector('.payload[data-path="'+path+'"]');
   if(el)el.classList.add('active');
@@ -289,7 +849,8 @@ function selectByPath(path){
       const desc=selected.desc?escHtml(selected.desc):'';
       const authorHtml=author?'<span><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'+author+'</span>':'';
       const descHtml=desc?'<div class="description">'+desc+'</div>':'';
-      $('detail').innerHTML='<h2>'+escHtml(selected.name)+'</h2><div class="meta">'+authorHtml+'<span><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>'+cat+'</span></div>'+descHtml+'<div class="actions"><button class="btn" id="runBtn" onclick="run()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'+(running?'Stop':'Run Payload')+'</button></div>';
+      $('detail').innerHTML='<h2>'+escHtml(selected.name)+'</h2><div class="meta">'+authorHtml+'<span><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>'+cat+'</span></div>'+descHtml+'<div class="actions"><button class="btn" id="runBtn" onclick="run()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run Payload</button></div>';
+      updateRunBtn();
       break;
     }
   }
@@ -298,18 +859,22 @@ function selectByPath(path){
 async function run(){
   if(!selected)return;
   if(running){stop();return;}
-  running=true;lineCount=0;
+  running=true;runningSection='local';lineCount=0;
   updateRunBtn();
   $('console').innerHTML='';
   $('lineCount').textContent='0 lines';
   $('status').textContent='Running...';
   $('status').classList.add('running');
 
-  // Get one-time CSRF token before starting SSE (EventSource can't send custom headers)
   let token='';
   try{
     const tokenResp=await fetch('/cgi-bin/api.sh?action=token');
     const tokenData=await tokenResp.json();
+    if(tokenData.code==='AUTH_REQUIRED'){
+      running=false;runningSection=null;updateRunBtn();
+      $('status').textContent='Session expired';$('status').classList.remove('running');
+      showLogin();return;
+    }
     token=tokenData.token||'';
   }catch(e){
     console.error('Failed to get CSRF token:',e);
@@ -323,7 +888,7 @@ async function run(){
   evtSource.onmessage=e=>{
     try{
       const d=JSON.parse(e.data);
-      const text=d.text.replace(/\\n/g,'\n');
+      const text=d.text.replace(/\\n/g,'\n').replace(/\\\\n/g,'\n');
       const lines=text.split('\n');
       lines.forEach(t=>{
         if(t.trim()==='')return;
@@ -343,8 +908,32 @@ async function run(){
       showPrompt(d.type,d.message,d.default||'');
     }catch(err){}
   });
-  evtSource.onerror=()=>{stop();};
-  evtSource.addEventListener('done',()=>{stop();});
+  evtSource.addEventListener('spinner',e=>{
+    try{const d=JSON.parse(e.data);handleSpinner(d);}catch(err){}
+  });
+  evtSource.onerror=()=>{stop(false);};
+  evtSource.addEventListener('done',()=>{stop(false);});
+}
+
+function handleSpinner(data){
+  if(data.action==='start'){
+    activeSpinners[data.id||'default']=data.message;
+    $('spinnerText').textContent=data.message||'Loading...';
+    $('spinnerOverlay').classList.add('show');
+  }else if(data.action==='stop'){
+    delete activeSpinners[data.id||'default'];
+    if(Object.keys(activeSpinners).length===0){
+      $('spinnerOverlay').classList.remove('show');
+    }else{
+      const remaining=Object.values(activeSpinners)[0];
+      $('spinnerText').textContent=remaining||'Loading...';
+    }
+  }
+}
+
+function hideSpinner(){
+  activeSpinners={};
+  $('spinnerOverlay').classList.remove('show');
 }
 
 function updateRunBtn(){
@@ -359,13 +948,25 @@ function updateRunBtn(){
   }
 }
 
-function stop(){
+function stop(hardStop=true){
+  const wasRunning=running;
   if(evtSource){evtSource.close();evtSource=null;}
   running=false;
+  runningSection=null;
+  hideSpinner();
   updateRunBtn();
   $('status').textContent='Ready • '+Object.values(payloads).flat().length+' payloads';
   $('status').classList.remove('running');
   fetch('/cgi-bin/api.sh?action=stop').catch(()=>{});
+  if(wasRunning && hardStop){
+    const line=document.createElement('div');
+    line.className='line red';
+    line.textContent='Payload hard-stopped';
+    $('console').appendChild(line);
+    lineCount++;
+    $('lineCount').textContent=lineCount+' lines';
+    $('console').scrollTop=$('console').scrollHeight;
+  }
 }
 
 function clearConsole(){
