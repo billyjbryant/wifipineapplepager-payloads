@@ -300,8 +300,10 @@ else
     exit 1
 fi
 
-hostname "$NEW_NAME" 2>/dev/null
-echo "$NEW_NAME" > /proc/sys/kernel/hostname 2>/dev/null
+# Set hostname using OpenWrt Native UCI
+uci set system.@system[0].hostname="$NEW_NAME"
+uci commit system
+/etc/init.d/system reload 
 LOG green "Host Set: $NEW_NAME"
 
 ifconfig "$INTERFACE" up
