@@ -138,7 +138,7 @@
         }
         
         #screen-wrapper { position: relative; z-index: 2; width: 100%; height: auto; max-height: 100%; object-fit: contain; background: transparent; box-shadow: 0 0 25px rgba(0,0,0,0.9); }
-        #pager { width: 100%; height: auto; display: block; image-rendering: pixelated; }
+        #pager { width: 100%; height: auto; display: block; image-rendering: auto; }
         #blur-bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(25px) brightness(0.6) saturate(1.2); z-index: 1; opacity: 0.8; transform: scale(1.5); }
 
         #pager_error {
@@ -584,4 +584,5 @@
         })();
     </script>
 </body>
+
 </html>
