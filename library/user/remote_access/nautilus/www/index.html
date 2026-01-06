@@ -164,7 +164,7 @@ function render(){
     const items=filtered[cat];
     if(!items||!items.length)return;
     const sorted=[...items].sort((a,b)=>(a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase()));
-    html+=`<div class="category"><div class="cat-header" onclick="toggle(this)"><span>${cat}</span><span style="display:flex;align-items:center;gap:8px"><span class="count">${items.length}</span><span class="arrow">▶</span></span></div><div class="payloads">`;
+    html+=`<div class="category"><div class="cat-header" onclick="toggle(this)"><span>${escHtml(cat)}</span><span style="display:flex;align-items:center;gap:8px"><span class="count">${items.length}</span><span class="arrow">▶</span></span></div><div class="payloads">`;
     sorted.forEach((p,i)=>{
       const name=escHtml(p.name||'');
       const desc=escHtml(p.desc||'');

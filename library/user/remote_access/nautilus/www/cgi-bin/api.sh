@@ -37,7 +37,12 @@ csrf_check() {
         fi
         return 0
     fi
-    return 0
+
+    # No Origin AND no Referer
+    echo "Content-Type: application/json"
+    echo ""
+    echo '{"error":"CSRF protection: Missing Origin/Referer"}'
+    exit 1
 }
 
 urldecode() {

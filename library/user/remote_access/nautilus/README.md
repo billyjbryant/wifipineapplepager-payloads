@@ -8,7 +8,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/Platform-WiFi%20Pineapple%20Pager-00d4aa?style=flat-square" />
-<img src="https://img.shields.io/badge/Version-1.1-blue?style=flat-square" />
+<img src="https://img.shields.io/badge/Version-1.1.1-blue?style=flat-square" />
 <img src="https://img.shields.io/badge/Author-JustSomeTrout-purple?style=flat-square" />
 </p>
 
@@ -68,7 +68,7 @@ Nautilus intercepts and displays DuckyScript prompts in the web UI:
 
 Your response is sent back to the payload — no pager interaction required!
 
-### Security (v1.1)
+### Security (v1.1.1)
 
 Nautilus includes multiple layers of protection against web-based attacks:
 
@@ -79,6 +79,7 @@ Nautilus includes multiple layers of protection against web-based attacks:
 | **Path Traversal Protection** | Prevents `/../` directory escape attacks |
 | **Response Injection Protection** | Blocks shell metacharacters in user input |
 | **Payload Path Validation** | Only executes files matching `/root/payloads/user/*/payload.sh` |
+| **XSS Protection** | HTML escaping on all dynamic content including category names |
 
 <p align="center">
 <img width="600" height="4" alt="" src="https://github.com/user-attachments/assets/8560a6c9-b1f1-4eed-ac94-bd9e14d36ac5" />
