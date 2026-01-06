@@ -3,7 +3,7 @@
 # Title: Nautilus
 # Description: Web-based payload launcher with live console output
 # Author: JustSomeTrout (Trout / troot.)
-# Version: 1.0
+# Version: 1.1
 # Firmware: Developed for Firmware version 1.0.4
 #
 # Runs uhttpd with CGI to browse and execute payloads from your browser.
@@ -34,15 +34,12 @@ fi
 cleanup() {
     LOG "yellow" "Stopping Nautilus..."
 
-    # Kill uhttpd
     [ -f "$PID_FILE" ] && kill $(cat "$PID_FILE") 2>/dev/null
     rm -f "$PID_FILE"
 
-    # Kill any running payload
     [ -f "/tmp/nautilus_payload.pid" ] && kill $(cat "/tmp/nautilus_payload.pid") 2>/dev/null
     rm -f "/tmp/nautilus_payload.pid"
 
-    # Clean up ALL nautilus temp files
     rm -f /tmp/nautilus_wrapper_*.sh
     rm -f /tmp/nautilus_fifo_*
     rm -f /tmp/nautilus_response
@@ -61,7 +58,6 @@ get_pager_ip() {
     echo "172.16.52.1"
 }
 
-# Show logo while initializing silently
 LOG ""
 LOG "cyan" '+======================+'
 LOG "cyan" '|╔╗╔╔═╗╦-╦╔╦╗╦╦--╦-╦╔═╗|'
@@ -72,7 +68,7 @@ LOG ""
 LOG "yellow" '|   ~ Web Payload Launcher ~    |'
 LOG ""
 
-# Silent initialization
+# Initialization
 [ ! -f "$WEB_DIR/index.html" ] && { LOG "red" "Files not found!"; exit 1; }
 chmod -R 755 "$WEB_DIR" 2>/dev/null
 chmod +x "$SCRIPT_DIR/build_cache.sh" 2>/dev/null

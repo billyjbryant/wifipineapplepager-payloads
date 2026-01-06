@@ -138,8 +138,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 let payloads={},filtered={},selected=null,running=false,evtSource=null,lineCount=0;
 const $=id=>document.getElementById(id);
 
+
+
 async function load(){
   try{
+    // list action is safe (read-only), no CSRF header needed
     const r=await fetch('/cgi-bin/api.sh?action=list');
     if(!r.ok)throw new Error('HTTP '+r.status);
     const text=await r.text();
@@ -215,7 +218,21 @@ async function run(){
   $('status').textContent='Running...';
   $('status').classList.add('running');
 
-  evtSource=new EventSource(`/cgi-bin/api.sh?action=run&path=${encodeURIComponent(selected.path)}`);
+  // Get one-time CSRF token before starting SSE (EventSource can't send custom headers)
+  let token='';
+  try{
+    const tokenResp=await fetch('/cgi-bin/api.sh?action=token');
+    const tokenData=await tokenResp.json();
+    token=tokenData.token||'';
+  }catch(e){
+    console.error('Failed to get CSRF token:',e);
+    $('status').textContent='Security error: Could not get token';
+    running=false;
+    updateRunBtn();
+    return;
+  }
+
+  evtSource=new EventSource(`/cgi-bin/api.sh?action=run&path=${encodeURIComponent(selected.path)}&token=${encodeURIComponent(token)}`);
   evtSource.onmessage=e=>{
     try{
       const d=JSON.parse(e.data);

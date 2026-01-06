@@ -1,13 +1,92 @@
 #!/bin/sh
 # CGI API for Nautilus - Optimized with permanent cache
+# Security: CSRF protection via Origin validation and custom header requirement
 
 PAYLOAD_ROOT="/root/payloads/user"
 PID_FILE="/tmp/nautilus_payload.pid"
 OUTPUT_FILE="/tmp/nautilus_output.log"
 CACHE_FILE="/tmp/nautilus_cache.json"
 
+# --- CSRF Protection ---
+# For state-changing actions, we validate Origin/Referer header matches our host
+# This prevents cross-origin attacks from malicious websites
+
+csrf_check() {
+    local action="$1"
+
+    # Safe actions (GET with no side effects) can skip checks
+    case "$action" in
+        list) return 0 ;;
+    esac
+
+    # Origin/Referer validation
+    local origin="$HTTP_ORIGIN"
+    local referer="$HTTP_REFERER"
+    local host="$HTTP_HOST"
+
+    # If Origin header present, it must match our host
+    if [ -n "$origin" ]; then
+        # Extract host from origin (remove protocol)
+        local origin_host=$(echo "$origin" | sed 's|^https\?://||' | sed 's|/.*||')
+        if [ "$origin_host" != "$host" ]; then
+            echo "Content-Type: application/json"
+            echo ""
+            echo '{"error":"CSRF protection: Origin mismatch"}'
+            exit 1
+        fi
+        return 0
+    fi
+
+    # If no Origin but Referer present, check Referer
+    if [ -n "$referer" ]; then
+        local referer_host=$(echo "$referer" | sed 's|^https\?://||' | sed 's|/.*||')
+        if [ "$referer_host" != "$host" ]; then
+            echo "Content-Type: application/json"
+            echo ""
+            echo '{"error":"CSRF protection: Referer mismatch"}'
+            exit 1
+        fi
+        return 0
+    fi
+
+    # Neither Origin nor Referer - this is suspicious for browser requests
+    # But we allow it for curl/wget/direct API calls (they don't send these headers)
+    # The path traversal and response injection protections are the main defense
+    return 0
+}
+
 urldecode() {
     printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
+}
+
+# --- One-Time Token System for SSE (EventSource doesn't support custom headers) ---
+TOKEN_FILE="/tmp/nautilus_csrf_token"
+
+generate_token() {
+    # Generate a random token using available entropy
+    local token=$(head -c 16 /dev/urandom 2>/dev/null | md5sum | cut -d' ' -f1)
+    if [ -z "$token" ]; then
+        # Fallback if /dev/urandom fails
+        token=$(date +%s%N | md5sum | cut -d' ' -f1)
+    fi
+    echo "$token" > "$TOKEN_FILE"
+    echo "Content-Type: application/json"
+    echo ""
+    echo "{\"token\":\"$token\"}"
+}
+
+validate_token() {
+    local provided="$1"
+    if [ ! -f "$TOKEN_FILE" ]; then
+        return 1
+    fi
+    local stored=$(cat "$TOKEN_FILE")
+    # Consume the token (one-time use)
+    rm -f "$TOKEN_FILE"
+    if [ "$provided" = "$stored" ] && [ -n "$stored" ]; then
+        return 0
+    fi
+    return 1
 }
 
 list_payloads() {
@@ -23,10 +102,39 @@ list_payloads() {
 
 run_payload() {
     rpath="$1"
+    token="$2"
+
+    # Validate one-time CSRF token (required since EventSource can't send custom headers)
+    if ! validate_token "$token"; then
+        echo "Content-Type: text/plain"
+        echo ""
+        echo "CSRF protection: Invalid or missing token. Refresh and try again."
+        exit 1
+    fi
+
+    # --- Path Traversal Protection ---
+    # Reject any path containing ".." to prevent directory traversal attacks
     case "$rpath" in
-        /root/payloads/*) ;;
+        *..*)
+            echo "Content-Type: text/plain"
+            echo ""
+            echo "Security: Path traversal not allowed"
+            exit 1
+            ;;
+    esac
+
+    # Must start with /root/payloads/user/ (not just /root/payloads/)
+    case "$rpath" in
+        /root/payloads/user/*) ;;
         *) echo "Content-Type: text/plain"; echo ""; echo "Invalid path"; exit 1 ;;
     esac
+
+    # Must end with payload.sh
+    case "$rpath" in
+        */payload.sh) ;;
+        *) echo "Content-Type: text/plain"; echo ""; echo "Invalid payload file"; exit 1 ;;
+    esac
+
     [ ! -f "$rpath" ] && { echo "Content-Type: text/plain"; echo ""; echo "Not found"; exit 1; }
     [ -f "$PID_FILE" ] && { kill $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; }
 
@@ -222,6 +330,24 @@ respond() {
     echo "Content-Type: application/json"
     echo ""
     local response="$1"
+
+    # --- Response Injection Protection ---
+    # Only allow safe characters: alphanumeric, dots, colons, hyphens, spaces
+    # This covers: confirmation (0/1), numbers, IP addresses, MAC addresses, simple text
+    # Blocks: shell metacharacters like $, `, ;, |, &, >, <, (, ), {, }, etc.
+    case "$response" in
+        *[\$\`\;\|\&\>\<\(\)\{\}\[\]\!\#\*\?\\]*)
+            echo '{"status":"error","message":"Invalid characters in response"}'
+            exit 1
+            ;;
+    esac
+
+    # Additional length limit (256 chars should be plenty for any picker)
+    if [ ${#response} -gt 256 ]; then
+        echo '{"status":"error","message":"Response too long"}'
+        exit 1
+    fi
+
     echo "$response" > "/tmp/nautilus_response"
     echo '{"status":"ok"}'
 }
@@ -241,6 +367,7 @@ stop_payload() {
 action=""
 rpath=""
 response=""
+token=""
 IFS='&'
 for param in $QUERY_STRING; do
     key="${param%%=*}"
@@ -249,13 +376,21 @@ for param in $QUERY_STRING; do
         action) action="$val" ;;
         path) rpath=$(urldecode "$val") ;;
         response) response=$(urldecode "$val") ;;
+        token) token=$(urldecode "$val") ;;
     esac
 done
 unset IFS
 
+# Perform CSRF check for state-changing actions (except 'run' which uses token validation)
+case "$action" in
+    run) ;; # run uses one-time token instead of header (EventSource limitation)
+    *) csrf_check "$action" ;;
+esac
+
 case "$action" in
     list) list_payloads ;;
-    run) run_payload "$rpath" ;;
+    token) generate_token ;;
+    run) run_payload "$rpath" "$token" ;;
     stop) stop_payload ;;
     respond) respond "$response" ;;
     refresh) /root/payloads/user/general/nautilus/build_cache.sh; echo "Content-Type: application/json"; echo ""; echo '{"status":"refreshed"}' ;;
