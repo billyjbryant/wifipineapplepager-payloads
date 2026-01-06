@@ -1,32 +1,22 @@
 #!/bin/sh
-# CGI API for Nautilus - Optimized with permanent cache
-# Security: CSRF protection via Origin validation and custom header requirement
 
 PAYLOAD_ROOT="/root/payloads/user"
 PID_FILE="/tmp/nautilus_payload.pid"
 OUTPUT_FILE="/tmp/nautilus_output.log"
 CACHE_FILE="/tmp/nautilus_cache.json"
 
-# --- CSRF Protection ---
-# For state-changing actions, we validate Origin/Referer header matches our host
-# This prevents cross-origin attacks from malicious websites
-
 csrf_check() {
     local action="$1"
 
-    # Safe actions (GET with no side effects) can skip checks
     case "$action" in
         list) return 0 ;;
     esac
 
-    # Origin/Referer validation
     local origin="$HTTP_ORIGIN"
     local referer="$HTTP_REFERER"
     local host="$HTTP_HOST"
 
-    # If Origin header present, it must match our host
     if [ -n "$origin" ]; then
-        # Extract host from origin (remove protocol)
         local origin_host=$(echo "$origin" | sed 's|^https\?://||' | sed 's|/.*||')
         if [ "$origin_host" != "$host" ]; then
             echo "Content-Type: application/json"
@@ -37,7 +27,6 @@ csrf_check() {
         return 0
     fi
 
-    # If no Origin but Referer present, check Referer
     if [ -n "$referer" ]; then
         local referer_host=$(echo "$referer" | sed 's|^https\?://||' | sed 's|/.*||')
         if [ "$referer_host" != "$host" ]; then
@@ -48,10 +37,6 @@ csrf_check() {
         fi
         return 0
     fi
-
-    # Neither Origin nor Referer - this is suspicious for browser requests
-    # But we allow it for curl/wget/direct API calls (they don't send these headers)
-    # The path traversal and response injection protections are the main defense
     return 0
 }
 
@@ -59,14 +44,11 @@ urldecode() {
     printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
 }
 
-# --- One-Time Token System for SSE (EventSource doesn't support custom headers) ---
 TOKEN_FILE="/tmp/nautilus_csrf_token"
 
 generate_token() {
-    # Generate a random token using available entropy
     local token=$(head -c 16 /dev/urandom 2>/dev/null | md5sum | cut -d' ' -f1)
     if [ -z "$token" ]; then
-        # Fallback if /dev/urandom fails
         token=$(date +%s%N | md5sum | cut -d' ' -f1)
     fi
     echo "$token" > "$TOKEN_FILE"
@@ -81,7 +63,6 @@ validate_token() {
         return 1
     fi
     local stored=$(cat "$TOKEN_FILE")
-    # Consume the token (one-time use)
     rm -f "$TOKEN_FILE"
     if [ "$provided" = "$stored" ] && [ -n "$stored" ]; then
         return 0
@@ -92,7 +73,6 @@ validate_token() {
 list_payloads() {
     echo "Content-Type: application/json"
     echo ""
-    # Serve cache if exists (built by payload.sh on startup)
     if [ -f "$CACHE_FILE" ]; then
         cat "$CACHE_FILE"
     else
@@ -104,7 +84,6 @@ run_payload() {
     rpath="$1"
     token="$2"
 
-    # Validate one-time CSRF token (required since EventSource can't send custom headers)
     if ! validate_token "$token"; then
         echo "Content-Type: text/plain"
         echo ""
@@ -112,8 +91,7 @@ run_payload() {
         exit 1
     fi
 
-    # --- Path Traversal Protection ---
-    # Reject any path containing ".." to prevent directory traversal attacks
+    # Path Traversal Protection
     case "$rpath" in
         *..*)
             echo "Content-Type: text/plain"
@@ -123,13 +101,11 @@ run_payload() {
             ;;
     esac
 
-    # Must start with /root/payloads/user/ (not just /root/payloads/)
     case "$rpath" in
         /root/payloads/user/*) ;;
         *) echo "Content-Type: text/plain"; echo ""; echo "Invalid path"; exit 1 ;;
     esac
 
-    # Must end with payload.sh
     case "$rpath" in
         */payload.sh) ;;
         *) echo "Content-Type: text/plain"; echo ""; echo "Invalid payload file"; exit 1 ;;
@@ -146,7 +122,6 @@ run_payload() {
     WRAPPER="/tmp/nautilus_wrapper_$$.sh"
     cat > "$WRAPPER" << 'WRAPPER_EOF'
 #!/bin/bash
-# Wrapper functions that echo to stdout AND call real commands
 
 _nautilus_emit() {
     local color="$1"
@@ -189,7 +164,6 @@ LED() {
     /usr/bin/LED "$@" 2>/dev/null || true
 }
 
-# Helper to wait for response
 _wait_response() {
     local resp_file="/tmp/nautilus_response"
     local default="$1"
@@ -209,7 +183,6 @@ _wait_response() {
 
 CONFIRMATION_DIALOG() {
     local msg="$*"
-    # Write prompt to stderr (stdout is captured by $())
     echo "[PROMPT:confirm] $msg" >&2
     sleep 0.1
     local resp=$(_wait_response "0")
@@ -266,7 +239,6 @@ SPINNER_STOP() {
 
 export -f LOG ALERT ERROR_DIALOG LED CONFIRMATION_DIALOG PROMPT TEXT_PICKER NUMBER_PICKER IP_PICKER MAC_PICKER SPINNER SPINNER_STOP _nautilus_emit _wait_response
 
-# Run the actual payload
 cd "$(dirname "$1")"
 source "$1"
 WRAPPER_EOF
@@ -274,14 +246,12 @@ WRAPPER_EOF
 
     : > "$OUTPUT_FILE"
 
-    # Run wrapper in background, output to log file
     /bin/bash "$WRAPPER" "$rpath" >> "$OUTPUT_FILE" 2>&1 &
     WRAPPER_PID=$!
     echo $WRAPPER_PID > "$PID_FILE"
 
     sent_lines=0
 
-    # Poll the output file
     while kill -0 $WRAPPER_PID 2>/dev/null || [ $(wc -l < "$OUTPUT_FILE") -gt $sent_lines ]; do
         current_lines=$(wc -l < "$OUTPUT_FILE")
         if [ $current_lines -gt $sent_lines ]; then
@@ -331,10 +301,7 @@ respond() {
     echo ""
     local response="$1"
 
-    # --- Response Injection Protection ---
-    # Only allow safe characters: alphanumeric, dots, colons, hyphens, spaces
-    # This covers: confirmation (0/1), numbers, IP addresses, MAC addresses, simple text
-    # Blocks: shell metacharacters like $, `, ;, |, &, >, <, (, ), {, }, etc.
+    # Response injection protection
     case "$response" in
         *[\$\`\;\|\&\>\<\(\)\{\}\[\]\!\#\*\?\\]*)
             echo '{"status":"error","message":"Invalid characters in response"}'
@@ -342,7 +309,6 @@ respond() {
             ;;
     esac
 
-    # Additional length limit (256 chars should be plenty for any picker)
     if [ ${#response} -gt 256 ]; then
         echo '{"status":"error","message":"Response too long"}'
         exit 1
@@ -381,9 +347,8 @@ for param in $QUERY_STRING; do
 done
 unset IFS
 
-# Perform CSRF check for state-changing actions (except 'run' which uses token validation)
 case "$action" in
-    run) ;; # run uses one-time token instead of header (EventSource limitation)
+    run) ;;
     *) csrf_check "$action" ;;
 esac
 
