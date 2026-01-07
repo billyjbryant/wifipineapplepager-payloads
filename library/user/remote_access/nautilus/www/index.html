@@ -110,6 +110,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .pr-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:all 0.15s}
 .pr-item:hover{background:var(--surface2)}
 .pr-item .pr-title{font-size:0.85em;font-weight:500;color:var(--text);margin-bottom:4px}
+.pr-item .pr-labels{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.pr-item .pr-label{font-size:0.7em;padding:2px 8px;border-radius:12px;font-weight:500;white-space:nowrap}
 .pr-item .pr-meta{font-size:0.75em;color:var(--text2)}
 .pr-item .pr-number{color:var(--accent);font-weight:600}
 .search-row{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
@@ -817,7 +819,8 @@ async function loadGithubPRs(forceRefresh=false){
       created:pr.created_at,
       branch:pr.head.ref,
       sha:pr.head.sha,
-      forkRepo:pr.head.repo?pr.head.repo.full_name:GITHUB_REPO
+      forkRepo:pr.head.repo?pr.head.repo.full_name:GITHUB_REPO,
+      labels:pr.labels?pr.labels.map(l=>({name:l.name,color:l.color})):[]
     }));
 
     const cacheData={prs:githubPRs,timestamp:Date.now()};
@@ -864,9 +867,27 @@ function renderPRs(){
   let html='';
   for(const pr of filteredPRs){
     const date=new Date(pr.created).toLocaleDateString();
-    html+='<div class="pr-item" onclick="selectPR('+pr.number+')"><div class="pr-title"><span class="pr-number">#'+pr.number+'</span> '+escHtml(pr.title)+'</div><div class="pr-meta">by '+escHtml(pr.user)+' • '+date+'</div></div>';
+    let labelsHtml='';
+    if(pr.labels&&pr.labels.length>0){
+      labelsHtml='<div class="pr-labels">';
+      for(const label of pr.labels){
+        const bgColor='#'+label.color;
+        const textColor=getLabelTextColor(label.color);
+        labelsHtml+='<span class="pr-label" style="background:'+bgColor+';color:'+textColor+'">'+escHtml(label.name)+'</span>';
+      }
+      labelsHtml+='</div>';
+    }
+    html+='<div class="pr-item" onclick="selectPR('+pr.number+')"><div class="pr-title"><span class="pr-number">#'+pr.number+'</span> '+escHtml(pr.title)+'</div>'+labelsHtml+'<div class="pr-meta">by '+escHtml(pr.user)+' • '+date+'</div></div>';
   }
   $('prList').innerHTML=html;
+}
+
+function getLabelTextColor(hexColor){
+  const r=parseInt(hexColor.substr(0,2),16);
+  const g=parseInt(hexColor.substr(2,2),16);
+  const b=parseInt(hexColor.substr(4,2),16);
+  const luminance=(0.299*r+0.587*g+0.114*b)/255;
+  return luminance>0.5?'#000':'#fff';
 }
 
 function selectGithubPayload(path){
