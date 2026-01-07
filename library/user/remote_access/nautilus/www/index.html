@@ -729,6 +729,7 @@ async function loadGithubPayloads(forceRefresh=false){
       const parts=p.split('/');
       const cat=parts[2];
       const name=parts[3];
+      if(name.toLowerCase()==='nautilus')continue;
       if(!githubPayloads[cat])githubPayloads[cat]=[];
 
       try{
