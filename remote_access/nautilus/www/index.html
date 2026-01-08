@@ -1362,7 +1362,6 @@ async function installGithub(forceOverwrite=false){
       const d=JSON.parse(e.data);
       if(d.status==='success'){
         $('status').textContent='Installed: '+d.name;
-        // Refresh local payloads list
         load();
       }else{
         $('status').textContent='Install failed: '+(d.message||'Unknown error');
@@ -1855,7 +1854,6 @@ function showPrompt(type,message,defaultVal){
   }
   $('modalOverlay').classList.add('show');
   validatePromptInput();
-  // Log prompt to console
   const line=document.createElement('div');
   line.className='line '+(type==='error'?'red':type==='alert'?'yellow':'cyan');
   line.textContent=(type==='error'?'[X] ':type==='alert'?'[!] ':'[?] ')+message+(currentPromptDefault?' (default: '+currentPromptDefault+')':'');
