@@ -18,6 +18,19 @@ COUNT_UPDATED=0
 LOG_BUFFER=""
 PENDING_UPDATE_PATH=""
 SKIP_REVIEW=false
+PROMPT_REVIEW=true
+PROMPT_OVERWRITE=true
+
+load_management_pull_config() {
+    local prompt_review_config
+    local prompt_overwrite_config
+    
+    prompt_review_config=$(PAYLOAD_GET_CONFIG "management_pull" "prompt_review" 2>/dev/null)
+    prompt_overwrite_config=$(PAYLOAD_GET_CONFIG "management_pull" "prompt_overwrite" 2>/dev/null)
+    
+    [ "$prompt_review_config" = "0" ] && PROMPT_REVIEW=false
+    [ "$prompt_overwrite_config" = "0" ] && PROMPT_OVERWRITE=false
+}
 
 cleanup() {
     rm -rf "$TEMP_DIR"
@@ -138,6 +151,7 @@ fetch_pr_files() {
 
 setup() {
     LED SETUP
+    load_management_pull_config
     check_and_install_packages || return 1
     
     PR_NUMBER=$(NUMBER_PICKER "Enter Pull Request #" 1)
@@ -180,13 +194,22 @@ setup() {
         return 1
     fi
     
-    # Ask about reviewing each file
-    if ! confirm_dialog "Review each file changed? ($file_count files)"; then
-        if confirm_dialog "Overwrite all $file_count touched files with PR contents?"; then
+    if [ "$PROMPT_REVIEW" = true ]; then
+        if ! confirm_dialog "Review each file changed? ($file_count files)"; then
+            if [ "$PROMPT_OVERWRITE" = true ]; then
+                if ! confirm_dialog "Overwrite all $file_count touched files with PR contents?"; then
+                    return 1
+                fi
+            fi
             SKIP_REVIEW=true
-        else
-            return 1
         fi
+    else
+        if [ "$PROMPT_OVERWRITE" = true ]; then
+            if ! confirm_dialog "Overwrite all $file_count touched files with PR contents?"; then
+                return 1
+            fi
+        fi
+        SKIP_REVIEW=true
     fi
     return 0
 }
@@ -274,6 +297,12 @@ process_payloads() {
         
         local is_new=false
         [ ! -e "$target_file" ] && is_new=true
+        
+        if [ "$is_new" = false ] && [ "$PROMPT_OVERWRITE" = true ] && [ "$SKIP_REVIEW" = true ]; then
+            if ! confirm_dialog "Overwrite existing: $rel_path?"; then
+                continue
+            fi
+        fi
         
         if [ -f "$src_file" ]; then
             # Handle self-update specially

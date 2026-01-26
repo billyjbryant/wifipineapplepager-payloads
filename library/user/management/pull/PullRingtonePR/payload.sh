@@ -1,12 +1,12 @@
 #!/bin/bash
-# Title: Pull Theme PR
+# Title: Pull Ringtone PR
 # Author: Austin (git@austin.dev)
-# Description: Downloads and overwrites themes from a specific GitHub Pull Request
+# Description: Downloads and overwrites ringtones from a specific GitHub Pull Request
 # Version: 1.1
 
 GH_ORG="hak5"
-GH_REPO="wifipineapplepager-themes"
-TARGET_DIR="/mmc/root/themes"
+GH_REPO="wifipineapplepager-ringtones"
+TARGET_DIR="/mmc/root/ringtones"
 TEMP_DIR="/tmp/pager_pr_update"
 
 PR_NUMBER=""
@@ -17,6 +17,19 @@ COUNT_NEW=0
 COUNT_UPDATED=0
 LOG_BUFFER=""
 SKIP_REVIEW=false
+PROMPT_REVIEW=true
+PROMPT_OVERWRITE=true
+
+load_management_pull_config() {
+    local prompt_review_config
+    local prompt_overwrite_config
+    
+    prompt_review_config=$(PAYLOAD_GET_CONFIG "management_pull" "prompt_review" 2>/dev/null)
+    prompt_overwrite_config=$(PAYLOAD_GET_CONFIG "management_pull" "prompt_overwrite" 2>/dev/null)
+    
+    [ "$prompt_review_config" = "0" ] && PROMPT_REVIEW=false
+    [ "$prompt_overwrite_config" = "0" ] && PROMPT_OVERWRITE=false
+}
 
 cleanup() {
     rm -rf "$TEMP_DIR"
@@ -67,10 +80,11 @@ check_and_install_packages() {
     return 0
 }
 
-get_dir_title() {
-    # just use theme directory name as the theme title
-    local dir="$1"
-    echo "$(basename $dir)"
+get_ringtone_title() {
+    # ringtone name/title is text before the first colon in the ringtone file
+    local ringtone_file="$1"
+    IFS=':' read -r ringtone_name _ < "$ringtone_file"
+    echo "$ringtone_name"
 }
 
 fetch_url() {
@@ -120,6 +134,7 @@ fetch_pr_files() {
 
 setup() {
     LED SETUP
+    load_management_pull_config
     check_and_install_packages || return 1
     
     PR_NUMBER=$(NUMBER_PICKER "Enter Pull Request #" 1)
@@ -154,21 +169,30 @@ setup() {
     fi
     
     local file_count
-    file_count=$(grep -c "^themes/" "$CHANGED_FILES" 2>/dev/null || echo "0")
+    file_count=$(grep -c "^ringtones/" "$CHANGED_FILES" 2>/dev/null || echo "0")
     if [ "$file_count" -eq 0 ]; then
         LED FAIL
-        ERROR_DIALOG "No theme files changed in PR"
+        ERROR_DIALOG "No ringtone files changed in PR"
         cleanup
         return 1
     fi
     
-    # Ask about reviewing each file
-    if ! confirm_dialog "Review each file changed? ($file_count files)"; then
-        if confirm_dialog "Overwrite all $file_count touched files with PR contents?"; then
+    if [ "$PROMPT_REVIEW" = true ]; then
+        if ! confirm_dialog "Review each file changed? ($file_count files)"; then
+            if [ "$PROMPT_OVERWRITE" = true ]; then
+                if ! confirm_dialog "Overwrite all $file_count touched files with PR contents?"; then
+                    return 1
+                fi
+            fi
             SKIP_REVIEW=true
-        else
-            return 1
         fi
+    else
+        if [ "$PROMPT_OVERWRITE" = true ]; then
+            if ! confirm_dialog "Overwrite all $file_count touched files with PR contents?"; then
+                return 1
+            fi
+        fi
+        SKIP_REVIEW=true
     fi
     return 0
 }
@@ -207,7 +231,7 @@ log_file_action() {
     fi
 }
 
-process_themes() {
+process_ringtones() {
     LED SPECIAL
     
     # Find extracted directory
@@ -215,71 +239,58 @@ process_themes() {
     extracted_dir=$(find "$TEMP_DIR" -maxdepth 1 -type d -name "${GH_REPO}-*" | head -n 1)
     [ -z "$extracted_dir" ] && extracted_dir=$(find "$TEMP_DIR" -maxdepth 1 -type d ! -path "$TEMP_DIR" | head -n 1)
     
-    if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir/themes" ]; then
+    if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir/ringtones" ]; then
         LED FAIL
         ERROR_DIALOG "Invalid PR archive structure"
         cleanup
         return 1
     fi
     
-    # Build a list of theme directories (those containing theme.json)
-    local processed_themes=""
     local file_count=0
     
     while read -r changed_file; do
-        [[ "$changed_file" != themes/* ]] && continue
+        [[ "$changed_file" != ringtones/* ]] && continue
         
         local src_file="$extracted_dir/$changed_file"
         [ ! -e "$src_file" ] && continue
         
-        # Find the theme directory (parent of theme.json or the file itself)
-        local theme_dir
-        if [ -f "$src_file" ] && [ "$(basename "$src_file")" = "theme.json" ]; then
-            theme_dir=$(dirname "$src_file")
-        elif [ -d "$src_file" ]; then
-            theme_dir="$src_file"
-        else
-            # For other files, find the containing theme directory
-            theme_dir=$(dirname "$src_file")
-            while [ "$theme_dir" != "$extracted_dir/themes" ] && [ "$theme_dir" != "/" ]; do
-                [ -f "$theme_dir/theme.json" ] && break
-                theme_dir=$(dirname "$theme_dir")
-            done
-        fi
+        # Only process .rtttl files
+        [[ "$src_file" != *.rtttl ]] && continue
         
-        # Skip if not a valid theme directory
-        [ ! -f "$theme_dir/theme.json" ] && continue
+        local rel_path="${changed_file#ringtones/}"
+        local target_file="$TARGET_DIR/$rel_path"
+        local target_dir=$(dirname "$target_file")
         
-        # Calculate relative path from themes root
-        local rel_path="${theme_dir#$extracted_dir/themes/}"
-        local target_path="$TARGET_DIR/$rel_path"
-        local dir_name=$(basename "$theme_dir")
-        
-        # Skip if we've already processed this theme
-        echo "$processed_themes" | grep -q "^$rel_path$" && continue
-        processed_themes+="$rel_path"$'\n'
-        
-        # Prompt for each theme unless skipping review
+        # Prompt for each file unless skipping review
         if [ "$SKIP_REVIEW" = false ]; then
-            local title=$(get_dir_title "$theme_dir")
-            confirm_dialog "Update theme: $title?" || continue
+            local title=$(get_ringtone_title "$src_file" 2>/dev/null || echo "")
+            local prompt="$rel_path"
+            [ -n "$title" ] && prompt="$rel_path ($title)"
+            confirm_dialog "Update: $prompt?" || continue
         fi
         
         file_count=$((file_count + 1))
-        mkdir -p "$(dirname "$target_path")"
+        mkdir -p "$target_dir"
         
         local is_new=false
-        [ ! -d "$target_path" ] && is_new=true
+        [ ! -e "$target_file" ] && is_new=true
+        
+        if [ "$is_new" = false ] && [ "$PROMPT_OVERWRITE" = true ] && [ "$SKIP_REVIEW" = true ]; then
+            local title=$(get_ringtone_title "$src_file" 2>/dev/null || echo "")
+            local prompt="$rel_path"
+            [ -n "$title" ] && prompt="$rel_path ($title)"
+            if ! confirm_dialog "Overwrite existing: $prompt?"; then
+                continue
+            fi
+        fi
         
         # Check for changes
-        if [ "$is_new" = false ] && diff -r -q "$theme_dir" "$target_path" > /dev/null 2>&1; then
+        if [ "$is_new" = false ] && diff -q "$src_file" "$target_file" > /dev/null 2>&1; then
             continue
         fi
         
-        # Copy the entire theme directory
-        rm -rf "$target_path"
-        cp -rf "$theme_dir" "$target_path"
-        local title=$(get_dir_title "$theme_dir")
+        cp "$src_file" "$target_file"
+        local title=$(get_ringtone_title "$src_file" 2>/dev/null || echo "$rel_path")
         log_file_action "$is_new" "$title"
     done < "$CHANGED_FILES"
     
@@ -301,5 +312,5 @@ finish() {
 }
 
 while true; do
-    setup && download_pr && process_themes && { finish; break; }
+    setup && download_pr && process_ringtones && { finish; break; }
 done
